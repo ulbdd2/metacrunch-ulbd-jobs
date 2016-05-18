@@ -1,0 +1,76 @@
+require_relative "mab2es/helper"
+require_relative "mab2es/mapping"
+require_relative "mab2es/settings"
+
+#
+# Options
+#
+options(require_args: true) do
+  add :url, "-u", "--url URL", String, "Elasticsearch url", default: "localhost:9200"
+  add :index, "-i", "--index STRING", String, "Elasticsearch index name", required: true
+  add :type, "-t", "--type STRING", String, "Elasticsearch type", required: true
+  add :number_of_replicas, "-r", "--replicas NUMBER", Integer, default: 0
+  add :number_of_procs, "-n", "--number-of-procs NUMBER", Integer, default: 1
+  add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
+end
+
+#
+# Local definements
+#
+SETTINGS[:index][:number_of_replicas] = options[:number_of_replicas]
+
+logger = Logger.new(STDOUT)
+
+mab2primo_transformation = Metacrunch::UBPB::Transformations::MabToPrimo.new
+primo2es_transformation = Metacrunch::UBPB::Transformations::PrimoToElasticsearch.new
+
+es_index_creator = Metacrunch::Elasticsearch::IndexCreator.new({
+  delete_existing_index: false,
+  default_mapping: MAPPING,
+  index: options[:index],
+  logger: logger,
+  settings: SETTINGS,
+  url: options[:url]
+})
+
+es_indexer = Metacrunch::Elasticsearch::Indexer.new({
+  id_accessor: -> (item) { item["id"] },
+  index: options[:index],
+  logger: logger,
+  type: options[:type],
+  url: options[:url]
+})
+
+
+#
+# pre/post process helper
+#
+pre_process { puts "Process started...".colorize(:yellow) }
+pre_process es_index_creator
+post_process { puts "Process finished.".colorize(:yellow) }
+
+
+#
+# Source / destination config
+#
+source Metacrunch::Fs::Reader.new(args)
+
+
+#
+# Transformation steps
+#
+transformation_buffer(options[:bulk_size])
+
+transformation do |files|
+  Parallel.map(files, in_processes: options[:number_of_procs]) do |file|
+    mab2primo_result = mab2primo_transformation.call(file.contents)
+    decode_json!(mab2primo_result)
+    primo2es_transformation.call(mab2primo_result)
+  end
+end
+
+transformation do |bulk|
+  Parallel.each(bulk.each_slice(bulk.count / 2), in_processes: 2) do |x|
+    es_indexer.call(x)
+  end
+end
