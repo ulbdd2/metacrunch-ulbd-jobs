@@ -1,0 +1,30 @@
+require 'rsolr'
+#require_relative "ora2mysql/helper"
+
+
+#
+# Options
+#
+options(require_args: false) do
+  add :db, "-d", "--db DB", String, "Database Name", required: true
+  add :login, "-l", "--login USERNAME", String, "Login for Database", required: true
+  add :pw, "-p", "--password PASSWORD", String, "Password for Database", required: true
+end
+
+logger = Logger.new(STDOUT)
+#source Metacrunch::Db::Reader.new(options[:db], ->(db) {
+#  db[:normalized_data].order(:z00p_rec_key)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>1000})
+#transformation ->(row) do
+#  puts row[:z00p_rec_key]
+#  result = JSON.parse(row[:normalized])
+#  puts JSON.pretty_generate(result)
+#end
+
+solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
+response = solr.get  'select', :params => {
+  :q => '*.*',
+  :start=>0,
+  :rows=>2,
+  :wt=>'json'
+}
+puts response

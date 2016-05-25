@@ -1,0 +1,40 @@
+#require_relative "import/helper"
+def get_last_record(options)
+  db = Sequel.connect(options[:ddb], :user=>options[:dlogin], :password=>options[:dpw])
+  result = db[:z00p].max(:z00p_rec_key)
+  db.disconnect
+  return result
+  #return "004848415"
+end
+#
+# Options
+#
+options(require_args: false) do
+  add :sdb, "-s", "--source SOURCEDB", String, "Source Database Name", required: true
+  add :slogin, "-l", "--login USERNAME", String, "Login for Source Database", required: true
+  add :spw, "-p", "--password PASSWORD", String, "Password for Source Database", required: true
+  add :ddb, "-d", "--target DESTINATIONDB", String, "Destination Database Name", required: true
+  add :dlogin, "-u", "--user USERNAME", String, "Login for Destination Database", required: true
+  add :dpw, "-c", "--credential PASSWORD", String, "Password for Destination Database", required: true
+  add :add, "-r", "--recreate BOOL", Object, "Recreate Local Database", default: false
+end
+
+logger = Logger.new(STDOUT)
+
+puts "OPTIONS: oracle://#{options[:slogin]}/#{options[:spw]}@#{options[:sdb]}"
+if options[:add]
+  last_record = 0
+else
+  last_record = get_last_record(options)
+end
+puts last_record
+source Metacrunch::Db::Reader.new(options[:sdb], ->(db) {
+  db[:z00p].where('z00p_rec_key>?',last_record).order(:z00p_rec_key)},{:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>5000000})
+transformation ->(row) do
+  puts row[:z00p_rec_key]
+  {z00p_rec_key: row[:z00p_rec_key], z00p_doc_number: row[:z00p_doc_number], z00p_ptr: row[:z00p_str].presence || row[:z00p_ptr].presence, z00p_status: row[:z00p_status], z00p_timestamp: row[:z00p_timestamp]}
+end
+
+destination Metacrunch::Db::Writer.new(options[:ddb], ->(db) {
+  db[:z00p]},{:user=>options[:dlogin], :password=>options[:dpw]
+})

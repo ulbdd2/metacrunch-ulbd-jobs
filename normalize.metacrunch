@@ -1,0 +1,29 @@
+require "metacrunch/ubpb"
+#require_relative "ora2mysql/helper"
+
+
+#
+# Options
+#
+options(require_args: false) do
+  add :db, "-d", "--db DB", String, "Database Name", required: true
+  add :login, "-l", "--login USERNAME", String, "Login for Database", required: true
+  add :pw, "-p", "--password PASSWORD", String, "Password for Database", required: true
+end
+mab2primo_transformation = Metacrunch::UBPB::Transformations::MabToPrimo.new
+primo2es_transformation = Metacrunch::UBPB::Transformations::PrimoToElasticsearch.new
+logger = Logger.new(STDOUT)
+
+source Metacrunch::Db::Reader.new(options[:db], ->(db) {
+  db[:z00p].order(:z00p_rec_key)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>1000})
+transformation ->(row) do
+  puts row[:z00p_rec_key]
+  result = mab2primo_transformation.call(row[:z00p_ptr])
+  final = primo2es_transformation.call(result)
+  puts JSON.pretty_generate(final)
+  {z00p_rec_key: row[:z00p_rec_key], z00p_doc_number: row[:z00p_doc_number], normalized: JSON.pretty_generate(result), z00p_status: row[:z00p_status]}
+end
+
+destination Metacrunch::Db::Writer.new(options[:db], ->(db) {
+  db[:normalized_data]},{:user=>options[:login], :password=>options[:pw]
+})
