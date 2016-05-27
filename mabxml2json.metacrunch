@@ -1,0 +1,31 @@
+#require_relative "mab2es/helper"
+#require_relative "mab2es/mapping"
+#require_relative "mab2es/settings"
+require "metacrunch/ubpb"
+
+
+#
+# Options
+#
+options(require_args: true) do
+  add :number_of_procs, "-n", "--number-of-procs NUMBER", Integer, default: 1
+  add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
+end
+
+logger = Logger.new(STDOUT)
+
+mab2primo_transformation = Metacrunch::UBPB::Transformations::MabToPrimo.new
+primo2es_transformation = Metacrunch::UBPB::Transformations::PrimoToElasticsearch.new
+
+#
+# Source / destination config
+#
+source Metacrunch::Fs::Reader.new(args)
+
+transformation ->(file_entry) do
+    mab2primo_result = mab2primo_transformation.call(file_entry.contents)
+    #decode_json!(mab2primo_result)
+    puts JSON.pretty_generate(mab2primo_result)
+#    primo2es_transformation.call(mab2primo_result)
+end
+
