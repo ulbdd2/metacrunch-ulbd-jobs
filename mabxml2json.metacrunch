@@ -1,9 +1,15 @@
 #require_relative "mab2es/helper"
 #require_relative "mab2es/mapping"
 #require_relative "mab2es/settings"
+begin
+  require "pry"
+  have_pry=true
+rescue LoadError
+  have_pry=false
+end
 require "metacrunch/ubpb"
 
-
+binding.pry if have_pry && ENV['DEBUG']=="1"
 #
 # Options
 #
