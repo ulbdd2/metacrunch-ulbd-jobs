@@ -15,8 +15,8 @@ end
 
 logger = Logger.new(STDOUT)
 
-mab2primo_transformation = Metacrunch::UBPB::Transformations::MabToPrimo.new
-primo2es_transformation = Metacrunch::UBPB::Transformations::PrimoToElasticsearch.new
+#mab2primo_transformation = Metacrunch::UBPB::Transformations::MabToPrimo.new
+#primo2es_transformation = Metacrunch::UBPB::Transformations::PrimoToElasticsearch.new
 mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
 
 #
@@ -25,9 +25,9 @@ mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
 source Metacrunch::Fs::Reader.new(args)
 
 transformation ->(file_entry) do
-    mab2primo_result = mab2primo_transformation.call(file_entry.contents)
+    #mab2primo_result = mab2primo_transformation.call(file_entry.contents)
     #decode_json!(mab2primo_result)
-    puts JSON.pretty_generate(mab2primo_result)
+    #puts JSON.pretty_generate(mab2primo_result)
 #    primo2es_transformation.call(mab2primo_result)
     puts JSON.pretty_generate(mab2vufind_transformation.call(file_entry.contents))
 end

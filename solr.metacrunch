@@ -48,8 +48,12 @@ transformation ->(row) do
   result = mab2vufind_transformation.call(row[:z00p_ptr])
   #final = primo2es_transformation.call(result)
 #  puts JSON.pretty_generate(final)
-  puts solr.add(result)
-  solr.commit
+  begin
+    solr.add(result)
+    solr.commit
+  rescue Exception => e
+    $stderr.puts e.message
+  end
 end
 
 solr.commit
@@ -61,4 +65,4 @@ response = solr.get  'select'#, :params => {
   #:rows=>2,
   #:wt=>'json'
 #}
-puts response
+#puts response
