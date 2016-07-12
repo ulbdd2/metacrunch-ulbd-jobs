@@ -1,4 +1,6 @@
 require 'rsolr'
+require 'json'
+require "metacrunch/ulbd"
 #require_relative "ora2mysql/helper"
 
 
@@ -19,12 +21,43 @@ logger = Logger.new(STDOUT)
 #  result = JSON.parse(row[:normalized])
 #  puts JSON.pretty_generate(result)
 #end
-
-solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
-response = solr.get  'select', :params => {
-  :q => '*.*',
-  :start=>0,
-  :rows=>2,
-  :wt=>'json'
+record = <<-TESTJSON
+{
+  "id": "003357112",
+  "sysNo_txt": "003357112",
+  "acNo_txt": "HT018431422",
+  "author": "Ufer, Jörg-Richard",
+  "title": "24 Stunden Nürburgring Nordschleife 2013",
+  "title_full": "24 Stunden Nürburgring Nordschleife 2013",
+  "isbn": "978-3-928540-72-8",
+  "callnumber-first": "pfl/e2586(SR)",
+  "callnumber-search": [
+    "PFL/E2586(SR)",
+    "SONDERREGAL"
+  ],
+  "publishDate": "2013"
 }
+TESTJSON
+mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
+solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
+
+source Metacrunch::Db::Reader.new(options[:db], ->(db) {
+  db[:z00p].order(:z00p_rec_key)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>5000000})
+transformation ->(row) do
+  result = mab2vufind_transformation.call(row[:z00p_ptr])
+  #final = primo2es_transformation.call(result)
+#  puts JSON.pretty_generate(final)
+  puts solr.add(result)
+  solr.commit
+end
+
+solr.commit
+solr.optimize
+
+response = solr.get  'select'#, :params => {
+  #:q => '*.*',
+  #:start=>0,
+  #:rows=>2,
+  #:wt=>'json'
+#}
 puts response

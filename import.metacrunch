@@ -1,11 +1,12 @@
 #require_relative "import/helper"
-def get_last_record(options)
-  db = Sequel.connect(options[:ddb], :user=>options[:dlogin], :password=>options[:dpw])
-  result = db[:z00p].max(:z00p_rec_key)
-  db.disconnect
-  return result
+require_relative "./common"
+#def get_last_record(options)
+#  db = Sequel.connect(options[:ddb], :user=>options[:dlogin], :password=>options[:dpw])
+#  result = db[:z00p].max(:z00p_rec_key)
+#  db.disconnect
+#  return result
   #return "004848415"
-end
+#end
 #
 # Options
 #
@@ -25,8 +26,9 @@ puts "OPTIONS: oracle://#{options[:slogin]}/#{options[:spw]}@#{options[:sdb]}"
 if options[:add]
   last_record = 0
 else
-  last_record = get_last_record(options)
+  last_record = get_last_record(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_rec_key")
 end
+create_index(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_rec_key")
 puts last_record
 source Metacrunch::Db::Reader.new(options[:sdb], ->(db) {
   db[:z00p].where('z00p_rec_key>?',last_record).order(:z00p_rec_key)},{:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>5000000})

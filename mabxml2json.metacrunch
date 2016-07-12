@@ -8,6 +8,7 @@ rescue LoadError
   have_pry=false
 end
 require "metacrunch/ubpb"
+require "metacrunch/ulbd"
 
 binding.pry if have_pry && ENV['DEBUG']=="1"
 #
@@ -22,6 +23,7 @@ logger = Logger.new(STDOUT)
 
 mab2primo_transformation = Metacrunch::UBPB::Transformations::MabToPrimo.new
 primo2es_transformation = Metacrunch::UBPB::Transformations::PrimoToElasticsearch.new
+mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
 
 #
 # Source / destination config
@@ -33,5 +35,6 @@ transformation ->(file_entry) do
     #decode_json!(mab2primo_result)
     puts JSON.pretty_generate(mab2primo_result)
 #    primo2es_transformation.call(mab2primo_result)
+    puts JSON.pretty_generate(mab2vufind_transformation.call(file_entry.contents))
 end
 

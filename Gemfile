@@ -7,7 +7,8 @@ gem "ruby-oci8"
 gem "mysql2"
 gem "metacrunch", ">= 3.0.0"
 gem "metacrunch-elasticsearch", github: "ubpb/metacrunch-elasticsearch", branch: "v3"
-gem "metacrunch-ulbd", github: "ulbdd2/metacrunch-ulbd", branch: "master", require: "metacrunch/ubpb"
+#gem "metacrunch-ulbd", github: "ulbdd2/metacrunch-ulbd", branch: "master", require: "metacrunch/ubpb"
+gem "metacrunch-ulbd", :path => "/usr/local/metacrunch/metacrunch-ulbd"
 
 group :development do
   gem "pry-byebug", ">= 3.3.0"
