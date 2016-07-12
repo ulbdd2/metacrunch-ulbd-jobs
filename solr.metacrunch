@@ -59,10 +59,10 @@ end
 solr.commit
 solr.optimize
 
-response = solr.get  'select'#, :params => {
-  #:q => '*.*',
-  #:start=>0,
-  #:rows=>2,
-  #:wt=>'json'
-#}
-#puts response
+response = solr.get  'select', :params => {
+  :q => '*.*',
+  :start=>0,
+  :rows=>2,
+  :wt=>'json'
+}
+puts response
