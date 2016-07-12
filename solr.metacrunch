@@ -1,8 +1,9 @@
 require 'rsolr'
 require 'json'
 require "metacrunch/ulbd"
+require_relative './common'
 #require_relative "ora2mysql/helper"
-
+enable_debug()
 
 #
 # Options

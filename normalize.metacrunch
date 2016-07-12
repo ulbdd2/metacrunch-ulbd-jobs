@@ -2,7 +2,7 @@ require "metacrunch/ubpb"
 #require_relative "ora2mysql/helper"
 require_relative "./common"
 
-
+enable_debug()
 #
 # Options
 #

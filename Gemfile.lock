@@ -7,10 +7,8 @@ GIT
       activesupport (>= 4.0.0)
       elasticsearch (~> 1.0)
 
-GIT
-  remote: git://github.com/ulbdd2/metacrunch-ulbd.git
-  revision: ee1756ab623f70379a5caeb7a7e9193980c67d6d
-  branch: master
+PATH
+  remote: /usr/local/metacrunch/metacrunch-ulbd
   specs:
     metacrunch-ulbd (3.0.0)
       isbn (~> 2.0.11)
