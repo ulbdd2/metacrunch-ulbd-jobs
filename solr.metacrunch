@@ -1,4 +1,5 @@
 require 'rsolr'
+require 'parallel'
 require 'json'
 require "metacrunch/ulbd"
 require_relative './common'
@@ -12,6 +13,8 @@ options(require_args: false) do
   add :db, "-d", "--db DB", String, "Database Name", required: true
   add :login, "-l", "--login USERNAME", String, "Login for Database", required: true
   add :pw, "-p", "--password PASSWORD", String, "Password for Database", required: true
+  add :number_of_procs, "-n", "--number-of-procs NUMBER", Integer, default: 4
+  add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
 end
 
 logger = Logger.new(STDOUT)
@@ -44,25 +47,19 @@ solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
 
 source Metacrunch::Db::Reader.new(options[:db], ->(db) {
   db[:z00p].order(:z00p_rec_key)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>5000000})
-transformation ->(row) do
-  result = mab2vufind_transformation.call(row[:z00p_ptr])
+
+transformation_buffer(options[:bulk_size])
+transformation do |rows|
+  Parallel.map(rows, in_processes: options[:number_of_procs]) do |row|
+    result = mab2vufind_transformation.call(row[:z00p_ptr])
   #final = primo2es_transformation.call(result)
 #  puts JSON.pretty_generate(final)
-  begin
-    solr.add(result)
-    solr.commit
-  rescue Exception => e
-    $stderr.puts e.message
+    begin
+      solr.add(result)
+    rescue Exception => e
+      $stderr.puts e.message
+    end
   end
+  solr.commit
+  solr.optimize
 end
-
-solr.commit
-solr.optimize
-
-response = solr.get  'select', :params => {
-  :q => '*.*',
-  :start=>0,
-  :rows=>2,
-  :wt=>'json'
-}
-puts response
