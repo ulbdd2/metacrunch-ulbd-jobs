@@ -3,6 +3,7 @@ require 'parallel'
 require 'json'
 require "metacrunch/ulbd"
 require_relative './common'
+require_relative './destinations'
 #require_relative "ora2mysql/helper"
 enable_debug()
 
@@ -54,12 +55,13 @@ transformation do |rows|
     result = mab2vufind_transformation.call(row[:z00p_ptr])
   #final = primo2es_transformation.call(result)
 #  puts JSON.pretty_generate(final)
-    begin
-      solr.add(result)
-    rescue Exception => e
-      $stderr.puts e.message
-    end
+#    begin
+#      solr.add(result)
+#    rescue Exception => e
+#      $stderr.puts e.message
+#    end
   end
-  solr.commit
-  solr.optimize
+#  solr.commit
+#  solr.optimize
 end
+destination SolrWriter.new ('http://localhost:8080/solr/biblio/')
