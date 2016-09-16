@@ -1,5 +1,6 @@
 #require_relative "import/helper"
 require_relative "./common"
+require_relative "./destinations"
 #def get_last_record(options)
 #  db = Sequel.connect(options[:ddb], :user=>options[:dlogin], :password=>options[:dpw])
 #  result = db[:z00p].max(:z00p_rec_key)
@@ -20,6 +21,8 @@ options(require_args: false) do
   add :dlogin, "-u", "--user USERNAME", String, "Login for Destination Database", required: true
   add :dpw, "-c", "--credential PASSWORD", String, "Password for Destination Database", required: true
   add :add, "-r", "--recreate BOOL", Object, "Recreate Local Database", default: false
+  add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
+  add :zrkey, "-z", "--z00p_rec_key NUMBER", String, "import record with z00p_rec_key"
 end
 
 logger = Logger.new(STDOUT)
@@ -28,16 +31,42 @@ puts "OPTIONS: oracle://#{options[:slogin]}/#{options[:spw]}@#{options[:sdb]}"
 if options[:add]
   last_record = 0
 else
-  last_record = get_last_record(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_rec_key")
+  last_record = get_last_record(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_timestamp").strftime("%Y%m%dT%H%M%S%z")
 end
 create_index(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_rec_key")
-puts last_record
-source Metacrunch::Db::Reader.new(options[:sdb], ->(db) {
-  db[:z00p].where('z00p_rec_key>?',last_record).order(:z00p_rec_key)},{:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>5000000})
-transformation ->(row) do
-  {z00p_rec_key: row[:z00p_rec_key], z00p_doc_number: row[:z00p_doc_number], z00p_ptr: row[:z00p_str].presence || row[:z00p_ptr].presence, z00p_status: row[:z00p_status], z00p_timestamp: row[:z00p_timestamp]}
+puts last_record, last_record.class
+if options[:zrkey].to_s.empty?
+  source Metacrunch::Db::Reader.new(options[:sdb], ->(db) {
+  #db.select(:z00p_rec_key,:z00p_doc_number,:z00p_str,:z00p_ptr,:z00p_status,:z00p_timestamp).from(:z00p).where{z00p_rec_key > last_record}.order(:z00p_rec_key)},
+   #db[:z00p].where('z00p_rec_key>?',last_record).order(:z00p_rec_key)},
+  #puts (db["select z00p_rec_key,z00p_library,z00p_doc_number,z00p_str,z00p_ptr,z00p_status,z00p_timestamp from z00p where z00p_timestamp >= ? order by z00p_timestamp", last_record]).inspect()
+  db["select z00p_rec_key,z00p_library,z00p_doc_number,z00p_str,z00p_ptr,z00p_status,z00p_timestamp from z00p where z00p_timestamp >= ?", last_record].order(:z00p_timestamp)},
+  {:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>options[:bulk_size]})
+else
+  source Metacrunch::Db::Reader.new(options[:sdb], ->(db) {
+  db["select z00p_rec_key,z00p_library,z00p_doc_number,z00p_str,z00p_ptr,z00p_status,z00p_timestamp from z00p where z00p_rec_key = ?", options[:zrkey]].order(:z00p_timestamp)},
+  {:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>options[:bulk_size]})
 end
 
+i=0
+transformation do |row|
+  i=i+1
+  puts "#{i}:#{row[:z00p_rec_key]}:#{row[:z00p_timestamp]}:#{Time.parse(row[:z00p_timestamp]+'00').inspect}"
+  {
+    z00p_rec_key: row[:z00p_rec_key],
+    z00p_library: row[:z00p_library],
+    z00p_doc_number: row[:z00p_doc_number],
+    z00p_ptr: row[:z00p_str].presence || row[:z00p_ptr].presence,
+    z00p_status: row[:z00p_status],
+    z00p_timestamp: Time.parse(row[:z00p_timestamp])
+  }
+end
+
+transformation_buffer(options[:bulk_size])
 destination Metacrunch::Db::Writer.new(options[:ddb], ->(db) {
-  db[:z00p]},{:user=>options[:dlogin], :password=>options[:dpw]
-})
+  db[:z00p]},
+  {:user=>options[:dlogin], :password=>options[:dpw],
+    :use_upsert=>true,
+    :id_key=>:z00p_rec_key
+  }
+)

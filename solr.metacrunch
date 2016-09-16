@@ -4,7 +4,6 @@ require 'json'
 require "metacrunch/ulbd"
 require_relative './common'
 require_relative './destinations'
-#require_relative "ora2mysql/helper"
 enable_debug()
 
 #
@@ -14,54 +13,46 @@ options(require_args: false) do
   add :db, "-d", "--db DB", String, "Database Name", required: true
   add :login, "-l", "--login USERNAME", String, "Login for Database", required: true
   add :pw, "-p", "--password PASSWORD", String, "Password for Database", required: true
-  add :number_of_procs, "-n", "--number-of-procs NUMBER", Integer, default: 4
+  #add :number_of_procs, "-n", "--number-of-procs NUMBER", Integer, default: 4
   add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
+  add :normalize, "-n", "--normalize BOOL", Object, "Recreate Local Database", default: false
+  add :zrkey, "-z", "--z00p_rec_key NUMBER", String, "import record with z00p_rec_key"
 end
 
 logger = Logger.new(STDOUT)
-#source Metacrunch::Db::Reader.new(options[:db], ->(db) {
-#  db[:normalized_data].order(:z00p_rec_key)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>1000})
-#transformation ->(row) do
-#  puts row[:z00p_rec_key]
-#  result = JSON.parse(row[:normalized])
-#  puts JSON.pretty_generate(result)
-#end
-record = <<-TESTJSON
-{
-  "id": "003357112",
-  "sysNo_txt": "003357112",
-  "acNo_txt": "HT018431422",
-  "author": "Ufer, Jörg-Richard",
-  "title": "24 Stunden Nürburgring Nordschleife 2013",
-  "title_full": "24 Stunden Nürburgring Nordschleife 2013",
-  "isbn": "978-3-928540-72-8",
-  "callnumber-first": "pfl/e2586(SR)",
-  "callnumber-search": [
-    "PFL/E2586(SR)",
-    "SONDERREGAL"
-  ],
-  "publishDate": "2013"
-}
-TESTJSON
-mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
-solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
 
-source Metacrunch::Db::Reader.new(options[:db], ->(db) {
-  db[:z00p].order(:z00p_rec_key)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>5000000})
+mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
+#solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
+
+if options[:normalize] then
+  table = :z00p
+  order = :z00p_timestamp
+else
+  table = :normalized_data
+  order = :last_change
+end
+if options[:zrkey].to_s.empty?
+  source Metacrunch::Db::Reader.new(options[:db], ->(db) {
+    puts "reading"
+    puts db[table].order(order).sql
+    db[table].order(order)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})
+else
+  source Metacrunch::Db::Reader.new(options[:db], ->(db) {
+    db[table].where(:z00p_rec_key=>options[:zrkey]).order(order)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})  
+end
+
+transformation do |row|
+  if row[:z00p_status]=="DELETED" then
+    {json: row[:z00p_doc_number], status: row[:z00p_status]}
+  else
+    if options[:normalize] then
+      {json: mab2vufind_transformation.call(row[:z00p_ptr]), status: row[:z00p_status]}
+    else
+      result = row[:normalized]?JSON.parse(row[:normalized]):nil
+      {json: result, status: row[:z00p_status]}
+    end
+  end
+end
 
 transformation_buffer(options[:bulk_size])
-transformation do |rows|
-  Parallel.map(rows, in_processes: options[:number_of_procs]) do |row|
-    result = mab2vufind_transformation.call(row[:z00p_ptr])
-  #final = primo2es_transformation.call(result)
-#  puts JSON.pretty_generate(final)
-#    begin
-#      solr.add(result)
-#    rescue Exception => e
-#      $stderr.puts e.message
-#    end
-  end
-#  solr.commit
-#  solr.optimize
-end
 destination SolrWriter.new ('http://localhost:8080/solr/biblio/')
