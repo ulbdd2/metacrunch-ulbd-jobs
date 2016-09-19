@@ -39,7 +39,7 @@ transformation ->(row) do
   end
   puts result
   {z00p_rec_key: row[:z00p_rec_key],
-  # z00p_library: row[:z00p_library],
+   z00p_library: row[:z00p_library],
    z00p_doc_number: row[:z00p_doc_number],
    normalized: result,
    z00p_status: row[:z00p_status],
