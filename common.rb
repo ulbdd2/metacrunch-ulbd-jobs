@@ -10,7 +10,6 @@ def create_index(database,user,password, table, column)
   db = Sequel.connect(database, :user=>user, :password=>password)
   if !db.indexes(table.to_sym)[(table + '_' + column + '_index').to_sym]
     db.add_index(table.to_sym, column.to_sym)
-    puts "here"
   end
   db.disconnect
 end

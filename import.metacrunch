@@ -20,9 +20,9 @@ options(require_args: false) do
   add :ddb, "-d", "--target DESTINATIONDB", String, "Destination Database Name", required: true
   add :dlogin, "-u", "--user USERNAME", String, "Login for Destination Database", required: true
   add :dpw, "-c", "--credential PASSWORD", String, "Password for Destination Database", required: true
-  add :add, "-r", "--recreate BOOL", Object, "Recreate Local Database", default: false
+  add :add, "-r", "--recreate", "Recreate Local Database"
   add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
-  add :zrkey, "-z", "--z00p_rec_key NUMBER", String, "import record with z00p_rec_key"
+  add :zrkey, "-z", "--z00p_doc_number NUMBER", String, "import record with z00p_doc_number"
 end
 
 logger = Logger.new(STDOUT)
@@ -44,7 +44,7 @@ if options[:zrkey].to_s.empty?
   {:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>options[:bulk_size]})
 else
   source Metacrunch::Db::Reader.new(options[:sdb], ->(db) {
-  db["select z00p_rec_key,z00p_library,z00p_doc_number,z00p_str,z00p_ptr,z00p_status,z00p_timestamp from z00p where z00p_rec_key = ?", options[:zrkey]].order(:z00p_timestamp)},
+  db["select z00p_rec_key,z00p_library,z00p_doc_number,z00p_str,z00p_ptr,z00p_status,z00p_timestamp from z00p where z00p_doc_number = ?", options[:zrkey]].order(:z00p_timestamp)},
   {:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>options[:bulk_size]})
 end
 

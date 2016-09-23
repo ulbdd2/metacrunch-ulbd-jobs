@@ -10,9 +10,9 @@ options(require_args: false) do
   add :db, "-d", "--db DB", String, "Database Name", required: true
   add :login, "-l", "--login USERNAME", String, "Login for Database", required: true
   add :pw, "-p", "--password PASSWORD", String, "Password for Database", required: true
-  add :add, "-r", "--recreate BOOL", Object, "Recreate Local Database", default: false
+  add :add, "-r", "--recreate", "Recreate Local Database"
   add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
-  add :zrkey, "-z", "--z00p_rec_key NUMBER", String, "import record with z00p_rec_key"
+  add :zrkey, "-z", "--z00p_doc_number NUMBER", String, "import record with z00p_doc_number"
 end
 mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
 logger = Logger.new(STDOUT)
@@ -28,7 +28,7 @@ if options[:zrkey].to_s.empty?
     db[:z00p].where('z00p_timestamp>?',last_record).order(:z00p_timestamp)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})
 else
   source Metacrunch::Db::Reader.new(options[:db], ->(db) {
-    db[:z00p].where('z00p_rec_key=?',options[:zrkey]).order(:z00p_timestamp)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})
+    db[:z00p].where('z00p_doc_number=?',options[:zrkey]).order(:z00p_timestamp)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})
 end
 transformation ->(row) do
   #puts row[:z00p_status]
@@ -37,7 +37,6 @@ transformation ->(row) do
   else
     result = JSON.pretty_generate(mab2vufind_transformation.call(row[:z00p_ptr]))
   end
-  puts result
   {z00p_rec_key: row[:z00p_rec_key],
    z00p_library: row[:z00p_library],
    z00p_doc_number: row[:z00p_doc_number],
