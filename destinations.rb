@@ -3,7 +3,7 @@ class SolrWriter
   def initialize(solr_url)
     @url = solr_url
     @solr = nil
-    @docs = 0
+    @docs = {:added =>0,:deleted=>0}
     #@solr = RSolr.connect :url => solr_url
   end
   
@@ -12,23 +12,26 @@ class SolrWriter
     begin
       puts "SolrWriter.write"
       if data.is_a?(Array) then
-        @docs = @docs + data.length
         added = []
         deleted = []
         data.each do |dt|
-          if dt[:status]=="DELETED" then
+          puts dt[:status]
+          if dt[:status].strip=="DELETED" then
             deleted << dt[:json]
           else
             added << dt[:json]
           end
         end
+        @docs[:added] = @docs[:added] + added.length
+        @docs[:deleted] = @docs[:deleted] + deleted.length
         @solr.add(added, :add_attributes => {:commitWithin=>60000})
         @solr.delete_by_id(deleted, :add_attributes => {:commitWithin=>60000})
       else
-        @docs = @docs + 1
-        if data[:status]=="DELETED" then
+        if data[:status].strip=="DELETED" then
+          @docs[:deleted] = @docs[:deleted] + 1
           @solr.delete_by_id(data[:json])
-        else 
+        else
+          @docs[:added] = @docs[:added] + 1
           @solr.add(data, :add_attributes => {:commitWithin=>60000})
         end
       end

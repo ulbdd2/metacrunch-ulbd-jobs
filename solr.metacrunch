@@ -1,4 +1,5 @@
 require 'rsolr'
+require 'rsolr-ext'
 require 'parallel'
 require 'json'
 require "metacrunch/ulbd"
@@ -24,6 +25,13 @@ logger = Logger.new(STDOUT)
 mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
 #solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
 
+def get_last_change
+  solr = RSolr::Ext.connect :url => 'http://localhost:8080/solr/biblio/'
+  solr.luke[:index][:lastModified]
+end
+
+puts get_last_change
+
 if options[:normalize] then
   table = :z00p
   order = :z00p_timestamp
@@ -42,7 +50,7 @@ else
 end
 
 transformation do |row|
-  if row[:z00p_status]=="DELETED" then
+  if row[:z00p_status].strip=="DELETED" then
     {json: row[:z00p_doc_number], status: row[:z00p_status]}
   else
     if options[:normalize] then

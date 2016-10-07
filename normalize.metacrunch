@@ -19,7 +19,7 @@ logger = Logger.new(STDOUT)
 if options[:add]
   last_record = 0
 else
-  last_record = get_last_record(options[:db], options[:login], options[:pw], "normalized_data", "z00p_timestamp").strftime("%Y%m%dT%H%M%S%z")
+  last_record = get_last_record(options[:db], options[:login], options[:pw], "normalized_data", "z00p_timestamp")
 end
 puts last_record
 create_index(options[:db], options[:login], options[:pw], "normalized_data", "z00p_rec_key")

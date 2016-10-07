@@ -31,7 +31,7 @@ puts "OPTIONS: oracle://#{options[:slogin]}/#{options[:spw]}@#{options[:sdb]}"
 if options[:add]
   last_record = 0
 else
-  last_record = get_last_record(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_timestamp").strftime("%Y%m%dT%H%M%S%z")
+  last_record = get_last_record(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_timestamp")
 end
 create_index(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_rec_key")
 puts last_record, last_record.class
@@ -55,7 +55,7 @@ transformation do |row|
     z00p_doc_number: row[:z00p_doc_number],
     z00p_ptr: row[:z00p_str].presence || row[:z00p_ptr].presence,
     z00p_status: row[:z00p_status],
-    z00p_timestamp: Time.parse(row[:z00p_timestamp])
+    z00p_timestamp: row[:z00p_timestamp]
   }
 end
 
