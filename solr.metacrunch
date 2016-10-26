@@ -38,12 +38,12 @@ else
   order = :last_change
 end
 if options[:zrkey].to_s.empty?
-  source Reader.new(options[:db], ->(db) {
+  source DBReader.new(options[:db], ->(db) {
     puts "reading"
     puts db[table].order(order).sql
     db[table].order(order)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})
 else
-  source Reader.new(options[:db], ->(db) {
+  source DBReader.new(options[:db], ->(db) {
     db[table].where(:z00p_doc_number=>options[:zrkey]).order(order)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})  
 end
 
