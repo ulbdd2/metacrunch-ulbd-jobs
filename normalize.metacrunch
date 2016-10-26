@@ -24,10 +24,10 @@ end
 puts last_record
 create_index(options[:db], options[:login], options[:pw], "normalized_data", "z00p_rec_key")
 if options[:zrkey].to_s.empty?
-  source Metacrunch::Db::Reader.new(options[:db], ->(db) {
-    db[:z00p].where('z00p_timestamp>?',last_record).order(:z00p_timestamp)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})
+  source DBReader.new(options[:db], ->(db) {
+    db[:z00p].order(:z00p_timestamp)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size],})
 else
-  source Metacrunch::Db::Reader.new(options[:db], ->(db) {
+  source DBReader.new(options[:db], ->(db) {
     db[:z00p].where('z00p_doc_number=?',options[:zrkey]).order(:z00p_timestamp)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})
 end
 transformation ->(row) do

@@ -36,14 +36,14 @@ end
 create_index(options[:ddb], options[:dlogin], options[:dpw], "z00p", "z00p_rec_key")
 puts last_record, last_record.class
 if options[:zrkey].to_s.empty?
-  source Metacrunch::Db::Reader.new(options[:sdb], ->(db) {
+  source DBReader.new(options[:sdb], ->(db) {
   #db.select(:z00p_rec_key,:z00p_doc_number,:z00p_str,:z00p_ptr,:z00p_status,:z00p_timestamp).from(:z00p).where{z00p_rec_key > last_record}.order(:z00p_rec_key)},
    #db[:z00p].where('z00p_rec_key>?',last_record).order(:z00p_rec_key)},
   #puts (db["select z00p_rec_key,z00p_library,z00p_doc_number,z00p_str,z00p_ptr,z00p_status,z00p_timestamp from z00p where z00p_timestamp >= ? order by z00p_timestamp", last_record]).inspect()
   db["select z00p_rec_key,z00p_library,z00p_doc_number,z00p_str,z00p_ptr,z00p_status,z00p_timestamp from z00p where z00p_timestamp >= ?", last_record].order(:z00p_timestamp)},
   {:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>options[:bulk_size]})
 else
-  source Metacrunch::Db::Reader.new(options[:sdb], ->(db) {
+  source DBReader.new(options[:sdb], ->(db) {
   db["select z00p_rec_key,z00p_library,z00p_doc_number,z00p_str,z00p_ptr,z00p_status,z00p_timestamp from z00p where z00p_doc_number = ?", options[:zrkey]].order(:z00p_timestamp)},
   {:user=>options[:slogin], :password=>options[:spw], :rows_per_fetch=>options[:bulk_size]})
 end
