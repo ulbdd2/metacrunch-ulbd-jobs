@@ -30,6 +30,7 @@ mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
 def get_last_change
   solr = RSolr::Ext.connect :url => 'http://localhost:8080/solr/biblio/'
   solr.luke[:index][:lastModified]
+  
 end
 
 if options[:normalize] then
@@ -39,14 +40,23 @@ else
   table = :normalized_data
   order = :last_change
 end
+
+
+last_solr_update = DateTime.parse(get_last_change()).strftime("%Y%m%d%H%M%3N")
+puts last_solr_update.class
+
+#build where clause
+
+# define DB Connection
+db_connection = Sequel.connect(options[:db],:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size])
 if options[:zrkey].to_s.empty?
-  source DBReader.new(options[:db], ->(db) {
+  source DBReader.new(db_connection, ->(db) {
     puts "reading"
     puts db[table].order(order).sql
-    db[table].where(:z00p_library=>options[:lib]).order(order)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})
+    db[table].where(:z00p_library=>options[:lib]).order(order)})   
 else
-  source DBReader.new(options[:db], ->(db) {
-    db[table].where(:z00p_doc_number=>options[:zrkey]).where(:z00p_library=>options[:lib]).order(order)},{:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size]})  
+  source DBReader.new(db_connection, ->(db) {
+    db[table].where(:z00p_doc_number=>options[:zrkey]).where(:z00p_library=>options[:lib]).order(order)})    
 end
 
 transformation do |row|

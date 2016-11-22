@@ -15,7 +15,6 @@ class SolrWriter
         added = []
         deleted = []
         data.each do |dt|
-          puts dt[:status]
           if dt[:status].strip=="DELETED" then
             deleted << dt[:json]
           else
@@ -47,7 +46,5 @@ class SolrWriter
     puts "SolrWriter.close"
     @solr.commit
     puts "SolrWriter.committed"
-    #@solr.optimize
-    puts "SolrWriter.optimized"
   end
 end
