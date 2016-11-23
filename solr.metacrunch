@@ -41,23 +41,22 @@ else
   order = :last_change
 end
 
-
-last_solr_update = DateTime.parse(get_last_change()).strftime("%Y%m%d%H%M%3N")
-puts last_solr_update.class
+# Use 2 days overlap because initial import takes some time.
+last_solr_update = options[:incr] ? DateTime.parse(get_last_change()).prev_day(2).strftime("%Y%m%d%H%M%3N") : nil
 
 #build where clause
+where_clause = "z00p_library = \'#{options[:lib]}\'"
+if last_solr_update.present?
+  where_clause += " and #{order.to_s} > \'#{last_solr_update.to_s}\'"
+end
+if options[:zrkey].to_s.present?
+  where_clause += " and {z00p_doc_number > #{options[:zrkey]}"
+end
 
 # define DB Connection
 db_connection = Sequel.connect(options[:db],:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size])
-if options[:zrkey].to_s.empty?
   source DBReader.new(db_connection, ->(db) {
-    puts "reading"
-    puts db[table].order(order).sql
-    db[table].where(:z00p_library=>options[:lib]).order(order)})   
-else
-  source DBReader.new(db_connection, ->(db) {
-    db[table].where(:z00p_doc_number=>options[:zrkey]).where(:z00p_library=>options[:lib]).order(order)})    
-end
+    db[table].where("#{where_clause}").order(order)})    
 
 transformation do |row|
   if row[:z00p_status].strip=="DELETED" then
