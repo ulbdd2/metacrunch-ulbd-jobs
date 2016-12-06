@@ -44,7 +44,7 @@ else
 end
 
 # Use 2 days overlap because initial import takes some time.
-last_solr_update = options[:incr] ? DateTime.parse(get_last_change()).prev_day(options[:days]).strftime("%Y%m%d%H%M%3N") : nil
+last_solr_update = options[:incr] ? DateTime.parse(get_last_change()).prev_day(options[:days].to_i).strftime("%Y%m%d%H%M%3N") : nil
 
 #build where clause
 where_clause = "z00p_library = \'#{options[:lib]}\'"
