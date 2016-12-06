@@ -21,6 +21,7 @@ options(require_args: false) do
   add :lib, "-L", "--library LIBRARY", String, "z00p Library", default: "DUE01"
   add :incr, "-i", "--incremental", "incremental update"
   add :days, "-j", "--days", Integer, default:2
+  add :solr, "-s", "--solr URL", String, "URL des solr Index", default: "http://localhost:8080/solr/biblio/"
 end
 
 logger = Logger.new(STDOUT)
@@ -29,7 +30,7 @@ mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
 #solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
 
 def get_last_change
-  solr = RSolr::Ext.connect :url => 'http://localhost:8080/solr/biblio/'
+  solr = RSolr::Ext.connect :url => options[:solr]
   solr.luke[:index][:lastModified]
   
 end
@@ -56,7 +57,8 @@ end
 
 # define DB Connection
 db_connection = Sequel.connect(options[:db],:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size])
-  source DBReader.new(db_connection, ->(db) {
+#source DBReader.new(db_connection, ->(db) {
+source Metacrunch::Db::Reader.new(db_connection, ->(db) {
     db[table].where("#{where_clause}").order(order)})    
 
 transformation do |row|
@@ -73,4 +75,4 @@ transformation do |row|
 end
 
 transformation_buffer(options[:bulk_size])
-destination SolrWriter.new ('http://localhost:8080/solr/biblio/')
+destination SolrWriter.new (options[:solr])
