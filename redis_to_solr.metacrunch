@@ -1,0 +1,40 @@
+require 'rsolr'
+require 'rsolr-ext'
+require 'parallel'
+require 'json'
+require "metacrunch/ulbd"
+require_relative './common'
+require_relative './destinations'
+enable_debug()
+
+#
+# Options
+#
+options(require_args: false) do
+  add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
+  add :normalize, "-n", "--normalize", "Normalize Data from z00p"
+  add :solr, "-s", "--solr URL", String, "URL des solr Index", default: "http://localhost:8080/solr/biblio/"
+end
+
+logger = Logger.new(STDOUT)
+
+mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
+   
+source Metacrunch::Redis::QueueReader.new("redis://localhost:6379/mabcache", "aleph", blocking: true)
+
+transformation do |row|
+  row = row.symbolize_keys
+  if row[:z00p_status].strip=="DELETED" then
+    {json: row[:z00p_doc_number], status: row[:z00p_status]}
+  else
+    if options[:normalize] then
+      {json: mab2vufind_transformation.call(row[:z00p_str].presence || row[:z00p_ptr].presence), status: row[:z00p_status]}
+    else
+      result = row[:normalized]?JSON.parse(row[:normalized]):nil
+      {json: result, status: row[:z00p_status]}
+    end
+  end
+end
+
+transformation_buffer(options[:bulk_size])
+destination SolrWriter.new (options[:solr])

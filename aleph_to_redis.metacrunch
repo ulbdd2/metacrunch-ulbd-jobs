@@ -1,0 +1,74 @@
+require 'rsolr'
+require 'rsolr-ext'
+require 'parallel'
+require 'json'
+require "metacrunch/ulbd"
+require_relative './common'
+require_relative './destinations'
+enable_debug()
+
+#
+# Options
+#
+options(require_args: false) do
+  add :db, "-d", "--db DB", String, "Database Name", required: true
+  add :login, "-l", "--login USERNAME", String, "Login for Database", required: true
+  add :pw, "-p", "--password PASSWORD", String, "Password for Database", required: true
+  #add :number_of_procs, "-n", "--number-of-procs NUMBER", Integer, default: 4
+  add :bulk_size, "-b", "--bulk NUMBER", Integer, default: 1000
+  add :normalize, "-n", "--normalize", "Normalize Data from z00p"
+  add :zrkey, "-z", "--z00p_doc_number NUMBER", String, "import record with z00p_doc_number"
+  add :lib, "-L", "--library LIBRARY", String, "z00p Library", default: "DUE01"
+  add :incr, "-i", "--incremental", "incremental update"
+  add :days, "-j", "--days", Integer, default:2
+  add :solr, "-s", "--solr URL", String, "URL des solr Index", default: "http://localhost:8080/solr/biblio/"
+end
+
+logger = Logger.new(STDOUT)
+
+mab2vufind_transformation = Metacrunch::ULBD::Transformations::MabToVufind.new
+#solr = RSolr.connect :url => 'http://localhost:8080/solr/biblio/'
+
+def get_last_change
+  solr = RSolr::Ext.connect :url => options[:solr]
+  solr.luke[:index][:lastModified]
+  
+end
+
+if options[:normalize] then
+  table = :z00p
+  order = :z00p_timestamp
+else
+  table = :normalized_data
+  order = :last_change
+end
+
+# Use 2 days overlap because initial import takes some time.
+last_solr_update = options[:incr] ? DateTime.parse(get_last_change()).prev_day(options[:days].to_i).strftime("%Y%m%d%H%M%3N") : nil
+
+#build where clause
+where_clause = "z00p_library = \'#{options[:lib]}\'"
+if last_solr_update.present?
+  where_clause += " and #{order.to_s} > \'#{last_solr_update.to_s}\'"
+end
+if options[:zrkey].to_s.present?
+  where_clause += " and {z00p_doc_number > #{options[:zrkey]}"
+end
+
+# define DB Connection
+db_connection = Sequel.connect(options[:db],:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size])
+#source DBReader.new(db_connection, ->(db) {
+source Metacrunch::Db::Reader.new(db_connection, ->(db) {
+    db[table].where("#{where_clause}").order(order)})    
+
+transformation do |row|
+  {
+    z00p_doc_number: row[:z00p_doc_number],
+    z00p_status: row[:z00p_status],
+    z00p_str: row[:z00p_str].presence || row[:z00p_ptr].presence,
+    z00p_timestamp: row[:z00p_timestamp]
+  }
+end
+
+#transformation_buffer(options[:bulk_size])
+destination Metacrunch::Redis::QueueWriter.new("redis://localhost:6379/mabcache", "aleph")
