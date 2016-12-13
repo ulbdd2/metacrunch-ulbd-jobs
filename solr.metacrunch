@@ -20,7 +20,7 @@ options(require_args: false) do
   add :zrkey, "-z", "--z00p_doc_number NUMBER", String, "import record with z00p_doc_number"
   add :lib, "-L", "--library LIBRARY", String, "z00p Library", default: "DUE01"
   add :incr, "-i", "--incremental", "incremental update"
-  add :days, "-j", "--days", Integer, default:2
+  add :days, "-j", "--days DAYS", Integer, "Tage vor solr Update", default:2
   add :solr, "-s", "--solr URL", String, "URL des solr Index", default: "http://localhost:8080/solr/biblio/"
 end
 
