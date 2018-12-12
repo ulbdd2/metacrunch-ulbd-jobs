@@ -59,7 +59,7 @@ end
 db_connection = Sequel.connect(options[:db],:user=>options[:login], :password=>options[:pw], :rows_per_fetch=>options[:bulk_size])
 #source DBReader.new(db_connection, ->(db) {
 source Metacrunch::Db::Reader.new(db_connection, ->(db) {
-    db[table].where("#{where_clause}").order(order)})    
+    db[table].where(Sequel.lit(where_clause)).order(order)})    
 
 transformation do |row|
   if row[:z00p_status].strip=="DELETED" then
