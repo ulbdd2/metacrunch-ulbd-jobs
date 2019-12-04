@@ -52,7 +52,7 @@ if last_solr_update.present?
   where_clause += " and #{order.to_s} > \'#{last_solr_update.to_s}\'"
 end
 if options[:zrkey].to_s.present?
-  where_clause += " and {z00p_doc_number > #{options[:zrkey]}"
+  where_clause += " and z00p_doc_number = #{options[:zrkey]}"
 end
 
 # define DB Connection
